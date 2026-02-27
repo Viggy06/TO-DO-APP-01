@@ -1,0 +1,168 @@
+name: Running CI
+
+on: [push]
+
+permissions:
+  id-token: write #allow GitHub's OIDC provider to create a JSON Web Token for every run.
+  contents: read #to checkout the code
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      
+      #--- Setting up Node
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 16 #(LTS)
+      
+      #--- Frontend
+      - name: Install frontend dependencies
+        working-directory: frontend/
+        run: npm ci #clean install
+
+      - name: Build frontend
+        working-directory: frontend/
+        run: npm run build
+
+      #--- Backend
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      ##--- SonarQube Scan (Code Quality and Security Scan)
+      # - name: SonarQube Scan
+      #   uses: SonarSource/sonarqube-scan-action@v6
+      #   with:
+      #     args: >
+      #       -Dsonar.projectKey=todo-app-react-node
+      #     # -Dsonar.scanner.http.headers=ngrok-skip-browser-warning:true
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      #     SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      
+
+      #--- Gitleaks File Scan
+      - name: Gitleaks Secret Scan
+        uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
+
+      #--- PUSHING INTO AWS ECR
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v5.1.1
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_OIDC_ROLE_NAME }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: GithubSession
+      
+      #--- LOGIN TO ECR
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      #--- Setting up variables
+      - name: Set up variables to use locally in runner
+        run: |
+          echo "REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
+          echo "FRONTEND_REPOSITORY=${{ vars.ECR_FRONTEND_REPO }}" >> $GITHUB_ENV
+          echo "BACKEND_REPOSITORY=${{ vars.ECR_BACKEND_REPO }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+
+      #--- BUILD DOCKER IMAGES
+      - name: Build frontend image
+        run: docker build -f frontend/Dockerfile -t frontend:${{ github.sha }} frontend/.
+
+      - name: Build backend image
+        run: docker build -f backend/Dockerfile -t backend:${{ github.sha }} backend/.
+
+      #--- Trivy Dependency Scan (Frontend)
+      - name: Trivy Dependency Scan (Frontend)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: frontend
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: 0
+
+      # --- Trivy Dependency Scan (Backend)
+      - name: Trivy Dependency Scan (Backend)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs #file system scan
+          scan-ref: backend
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: 0
+
+      ##--- ECR Image Scan
+      - name: Image Scan using Trivy (Frontend)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: frontend:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: 0
+
+      - name: Image Scan using Trivy (Backend)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: backend:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: 0
+
+      ##--- TAGGING AND PUSHING TO ECR
+      - name: Pushing To ECR
+        run: |
+          docker tag frontend:${IMAGE_TAG} $REGISTRY/$FRONTEND_REPOSITORY:frontend-${IMAGE_TAG}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}
+          docker tag backend:${IMAGE_TAG} $REGISTRY/$BACKEND_REPOSITORY:backend-${IMAGE_TAG}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}
+
+          docker push $REGISTRY/$FRONTEND_REPOSITORY:frontend-${IMAGE_TAG}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}
+          docker push $REGISTRY/$BACKEND_REPOSITORY:backend-${IMAGE_TAG}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}
+        
+      # #--- Updating Manifest File in another repo
+      - name: Checkout different repo
+        uses: actions/checkout@v4
+        with:
+          repository: Viggy06/TO-DO-APP-CONFIGS
+          token: ${{ secrets.GH_PAT }}
+          path: configs-repo #folder name where this repo will be checked out
+      
+      - name: Configure Git identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+
+      #--- Update frontend-deployment-pod.yml with new image tags
+      - name: Update frontend-deployment-pod.yml
+        run: |
+          pwd
+          cd configs-repo/frontend
+          pwd
+          sed -i "s|image: .*:frontend-.*|image: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.AWS_ECR_REPO }}:frontend-${IMAGE_TAG}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}|" frontend-deployment-pod.yml
+
+      - name: Commit frontend image update
+        run: |
+          cd configs-repo
+          git add frontend/frontend-deployment-pod.yml
+          git commit -m "chore(frontend): update image to ${{ github.sha }}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          git push
+
+      ##--- Update backend-deployment-pod.yml with new image tags
+      - name: Update backend-deployment-pod.yml
+        run: |
+          cd configs-repo/backend
+          sed -i "s|image: .*:backend-.*|image: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.AWS_ECR_REPO }}:backend-${IMAGE_TAG}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}|" backend-deployment-pod.yml
+      
+      - name: Commit backend image update
+        run: |
+          cd configs-repo
+          git add backend/backend-deployment-pod.yml
+          git commit -m "chore(backend): update image to ${{ github.sha }}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          git push
