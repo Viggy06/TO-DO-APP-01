@@ -34,16 +34,16 @@ jobs:
         working-directory: backend
         run: npm ci
 
-      ##--- SonarQube Scan (Code Quality and Security Scan)
-      # - name: SonarQube Scan
-      #   uses: SonarSource/sonarqube-scan-action@v6
-      #   with:
-      #     args: >
-      #       -Dsonar.projectKey=todo-app-react-node
-      #     # -Dsonar.scanner.http.headers=ngrok-skip-browser-warning:true
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      #     SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      #--- SonarQube Scan (Code Quality and Security Scan)
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        with:
+          args: >
+            -Dsonar.projectKey=todo-app-react-node
+          # -Dsonar.scanner.http.headers=ngrok-skip-browser-warning:true
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
       
 
       #--- Gitleaks File Scan
