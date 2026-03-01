@@ -86,6 +86,6 @@ ECR --> Backend
 Prometheus --> Grafana
 ```
 ## Repository Visibility
-- Application repository: Public
-- Manifest repository: Private (GitOps configuration and cluster details)
-- Terraform repository: Private (infrastructure provisioning and state configuration)
+- **Application Repository**: Public
+- **Manifest Repository**: - Private (GitOps configuration and cluster details)
+- **Terraform Repository**:  Private (infrastructure provisioning and state configuration)
