@@ -18,7 +18,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 16 #(LTS)
+          node-version: 20 #(LTS)
       
       #--- Frontend
       - name: Install frontend dependencies

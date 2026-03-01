@@ -20,14 +20,14 @@
 
 #STAGE 1: Build Image
 FROM node:20-alpine AS builder
-WORKDIR /usr/src/app
+WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
 
 #Stage 2: Production Image
 FROM node:20-alpine
-WORKDIR /usr/src/app
-COPY --from=builder /usr/src/app ./
+WORKDIR /app
+COPY --from=builder /app ./
 EXPOSE 3500
 CMD ["node", "index.js"]
