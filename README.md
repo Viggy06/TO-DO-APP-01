@@ -87,7 +87,5 @@ Prometheus --> Grafana
 ```
 ## Repository Visibility
 - **Application Repository**: Public
-- **Manifest Repository**: [Manifest-Repo](https://github.com/Viggy06/TO-DO-APP-CONFIGS)  
-  _(GitOps configuration and Kubernetes cluster manifests)_
-- **Terraform Repository**: [Terraform-Infra-Repo](https://github.com/Viggy06/TO-DO-APP-Terraform)
-  _(Infrastructure provisioning and remote state configuration)_
+- **Manifest Repository**: - Private (GitOps configuration and cluster details)
+- **Terraform Repository**:  Private (infrastructure provisioning and state configuration)
