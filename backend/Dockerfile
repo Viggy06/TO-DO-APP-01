@@ -19,15 +19,10 @@ CMD ["node", "index.js"]
 #It is faster than npm install and is recommended for production builds.
 
 #STAGE 1: Build Image
-# FROM node:20-alpine AS builder
+# FROM node:20-alpine AS 
 # WORKDIR /app
 # COPY package*.json ./
 # RUN npm ci
 # COPY . .
-
-# #Stage 2: Production Image
-# FROM node:20-alpine
-# WORKDIR /app
-# COPY --from=builder /app ./
 # EXPOSE 3500
 # CMD ["node", "index.js"]
