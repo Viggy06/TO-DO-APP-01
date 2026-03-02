@@ -6,26 +6,26 @@
 #THEN VISIT to localhost:3000
 
 
-# FROM node:16-alpine
-# WORKDIR /usr/src/app
-# COPY package*.json ./
-# RUN npm install
-# COPY . .
-# CMD [ "npm", "start" ]
+FROM node:16-alpine
+WORKDIR /usr/src/app
+COPY package*.json ./
+RUN npm install
+COPY . .
+CMD [ "npm", "start" ]
 
 #Every Line in Dockerfile creates a new layer in the image.
 #So, it is better to copy package.json  first and COPY the rest of the files later.
 
 #STAGE 1: Build Image
-FROM node:24-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
+# FROM node:24-alpine AS builder
+# WORKDIR /app
+# COPY package*.json ./
+# RUN npm ci
+# COPY . .
 
-#STAGE 2: Final Stage
-FROM node:24-alpine
-WORKDIR /app
-COPY --from=builder /app ./
-EXPOSE 3000
-CMD [ "npm", "start" ]
+# #STAGE 2: Final Stage
+# FROM node:24-alpine
+# WORKDIR /app
+# COPY --from=builder /app ./
+# EXPOSE 3000
+# CMD [ "npm", "start" ]

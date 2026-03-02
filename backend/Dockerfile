@@ -8,26 +8,26 @@
 #THEN VISIT to localhost:3000
 
 # FROM node:14
-# FROM node:20-alpine
-# WORKDIR /usr/src/app
-# COPY package*.json ./
-# RUN npm install
-# COPY . .
-# CMD ["node", "index.js"]
+FROM node:20-alpine
+WORKDIR /usr/src/app
+COPY package*.json ./
+RUN npm install
+COPY . .
+CMD ["node", "index.js"]
 
 #npm ci package-lock.json file is used to install exact versions of dependencies. 
 #It is faster than npm install and is recommended for production builds.
 
 #STAGE 1: Build Image
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
+# FROM node:20-alpine AS builder
+# WORKDIR /app
+# COPY package*.json ./
+# RUN npm ci
+# COPY . .
 
-#Stage 2: Production Image
-FROM node:20-alpine
-WORKDIR /app
-COPY --from=builder /app ./
-EXPOSE 3500
-CMD ["node", "index.js"]
+# #Stage 2: Production Image
+# FROM node:20-alpine
+# WORKDIR /app
+# COPY --from=builder /app ./
+# EXPOSE 3500
+# CMD ["node", "index.js"]
