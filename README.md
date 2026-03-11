@@ -1,6 +1,6 @@
 ## 🏗️ Architecture Overview
 
-This project implements a complete **DevSecOps Lifecycle** for a containerized microservices application. It integrates infrastructure provisioning, automated security scanning, GitOps-driven deployments, and cluster observability.
+This project implements a complete **DevSecOps Lifecycle** for a **Three-Tier-Application** application. It integrates infrastructure provisioning, automated security scanning, GitOps-driven deployments, and cluster observability.
 
 ### System Architecture
 
